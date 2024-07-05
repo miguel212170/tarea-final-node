@@ -1,55 +1,59 @@
-const request = require("supertest")
-const app = require("../app")
+const request = require('supertest')
+const app = require('../app')
 
 
-const URL_BASE_USERS = '/users'
-const URL_BASE = '/categories'
-const category = {
-  name: 'electronica'
-}
+const BASE_URL = '/api/v1/categories'
+const BASE_URL_AUTH = '/api/v1/users/login'
+let token, categoryId
 
-let TOKEN
-let categoryId
 
-beforeAll(async () => {
-  const user = {
-    email: "fernando@gmail.com",
-    password: '1234'
-  }
+beforeAll(async()=>{
+    const body = {
+        email    : 'mticona@gmail.com',
+        password : '987654',
+    }
+    const res = await request(app)
+        .post(BASE_URL_AUTH)
+        .send(body)
 
-  const res = await request(app)
-    .post(`${URL_BASE_USERS}/login`)
-    .send(user)
-
-  TOKEN = res.body.token
+    token = res.body.token
 })
 
-test("POST -> 'URL_BASE', should return status code 201, res.body to be defined and res.body.name === category.name", async () => {
-  const res = await request(app)
-    .post(URL_BASE)
-    .send(category)
-    .set("Authorization", `Bearer ${TOKEN}`)
 
-  categoryId = res.body.id
+test('POST => BASE_URL should return statusCode 201 and res.body.name === category.name', async() => {
+    const category = {
+        name: 'Moviles'
+    }
+    
+    const res = await request(app)
+        .post(BASE_URL)
+        .send(category)
+        .set('Authorization', `Bearer ${token}`)
 
-  expect(res.statusCode).toBe(201)
-  expect(res.body).toBeDefined()
-  expect(res.body.name).toBe(category.name)
+    categoryId = res.body.id
+
+    expect(res.statusCode).toBe(201)
+    expect(res.body).toBeDefined()
+    expect(res.body.name).toBe(category.name)
 })
 
-test("GET -> 'URL_BASE/categories', should return status code 200, res.body to be defined and res.body to have lenght === 1", async () => {
-  const res = await request(app)
-    .get(URL_BASE)
 
-  expect(res.status).toBe(200)
-  expect(res.body).toBeDefined()
-  expect(res.body).toHaveLength(1)
+test('GET => BASE_URL should return statusCode 200, res.body to defined and res.body.length === 1', async() => {
+
+    const res = await request(app)
+    .get(BASE_URL)
+
+    expect(res.status).toBe(200)
+    expect(res.body).toBeDefined()
+    expect(res.body).toHaveLength(1)
 })
 
-test("Delete -> 'URL_BASE/:id', should return status code 204", async () => {
-  const res = await request(app)
-    .delete(`${URL_BASE}/${categoryId}`)
-    .set('Authorization', `Bearer ${TOKEN}`)
 
-  expect(res.status).toBe(204)
+test('DELETE => BASE_URL/:id should return statusCode 204', async() => {
+
+    const res = await request(app)
+    .delete(`${BASE_URL}/${categoryId}`)
+    .set('Authorization', `Bearer ${token}`)
+    
+    expect(res.status).toBe(204)
 })

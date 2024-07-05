@@ -1,16 +1,20 @@
-const { getAll, create, getOne, remove, update } = require('../controllers/product.controllers');
+const { getAll, create, getOne, remove, update, setImages } = require('../controllers/product.controllers');
 const express = require('express');
-const verifyJWT = require('../utils/verifyJWT');
+const { verifyJwt } = require('../utils/verifyJwt');
 
 const routerProduct = express.Router();
 
 routerProduct.route('/')
     .get(getAll)
-    .post(verifyJWT, create);
+    .post(verifyJwt, create);
+
+
+routerProduct.route('/:id/images')
+    .post(verifyJwt, setImages)
 
 routerProduct.route('/:id')
     .get(getOne)
-    .delete(verifyJWT, remove)
-    .put(verifyJWT, update);
+    .delete(verifyJwt, remove)
+    .put(verifyJwt, update);
 
 module.exports = routerProduct;

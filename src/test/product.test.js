@@ -1,117 +1,139 @@
-require("../models")
-const request = require("supertest")
+require('../models')
+const request = require('supertest')
 const app = require('../app')
+const path = require('path')
+
 const Category = require('../models/Category')
-const Product = require("../models/Product")
 
-//get publico y los demas son privados
 
-const URL_BASE_USER = '/users/login'
-const URL_BASE = '/products'
-let TOKEN
-let category
-let product
-let productId
+const BASE_URL = '/api/v1/products'
+const BASE_URL_AUTH = '/api/v1/users/login'
+const BASE_URL_IMAGES = '/api/v1/product_images'
+let token, category, product, productId, image
 
-beforeAll(async() => {
 
-    const user = {
-        email: "fernando@gmail.com",
-        password: '1234'
+beforeAll(async()=>{
+    const body = {
+        email    : 'mticona@gmail.com',
+        password : '987654',
+    }
+    const res = await request(app)
+        .post(BASE_URL_AUTH)
+        .send(body)
+
+    token = res.body.token
+
+
+    category = await Category.create({
+        name: 'Clothes'
+    })
+
+    product = {
+        title: 'Shirt',
+        description: 'Basic shirt of color black',
+        price: 200,
+        categoryId: category.id
     }
 
-    const res = await request(app)
-    .post(URL_BASE_USER)
-    .send(user)
-
-    TOKEN = res.body.token
-
-//primera instancia
-category = await Category.create({name: "pantallas"})
-
-product = {
-    title: 'LG curve 90',
-    description: 'lorem20',
-    price: 111.28,
-    categoryId: category.id
-}
+    // Create image
+    const localImage = path.join(__dirname, 'createData', 'test-img.png')
+    image = await request(app)
+        .post(BASE_URL_IMAGES)
+        .set('Authorization', `Bearer ${token}`)
+        .attach('image', localImage)
+        
 })
 
-test("Post -> 'URL_BASE', should return status code 201, res.body to be defined and res.body.title === product.title", async () => {
-    const res = await request(app)
-    .post(URL_BASE)
-    .send(product)
-    .set('Authorization', `Bearer ${TOKEN}`)
 
+afterAll(async()=>{
+    await category.destroy()
+
+    // Delete image
+    await request(app)
+        .delete(`${BASE_URL_IMAGES}/${ image.body.id }`)
+        .set('Authorization', `Bearer ${token}`)
+})
+
+
+test('POST => BASE_URL should return statusCode 201, res.body.title === product.title and res.body.categoryId === category.id', async() => {
+
+    const res = await request(app)
+        .post(BASE_URL)
+        .send(product)
+        .set('Authorization', `Bearer ${token}`)
+    
     productId = res.body.id
 
-    expect(res.status).toBe(201)
+    expect(res.statusCode).toBe(201)
     expect(res.body).toBeDefined()
     expect(res.body.title).toBe(product.title)
+    expect(res.body.categoryId).toBe(category.id)
+
 })
 
-test("GET -> 'URL_BASE', should return status code 200, res.body to be defined and res.body.length === 1, res.body[0].category.id === category.id", 
-async() => {
+
+test('GET => BASE_URL should return statusCode 200 and res.body to have length 1 ', async() => {
+    
     const res = await request(app)
-    .get(URL_BASE)
+        .get(BASE_URL)
 
     expect(res.statusCode).toBe(200)
     expect(res.body).toBeDefined()
     expect(res.body).toHaveLength(1)
-    expect(res.body[0].category).toBeDefined()
-    expect(res.body[0].category.id).toBe(category.id)
-
 })
 
-test("Get -> 'URL_BASE', should return status code 200, res.body to be defined, and res.body.length === 1, res.body[0].categoryId === category.id, and res.body[0].category.id === category.id", 
-async () => {
+
+test('GET => BASE_URL/:id should return statusCode 200 and res.body.name === produc.name ', async() => {
+    
     const res = await request(app)
-    .get(`${URL_BASE}?category=${category.id}`)
-    expect(res.status).toBe(200)
+        .get(`${BASE_URL}/${ productId }`)
+
+    
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toBeDefined()
+    expect( res.body.title ).toBe( product.title )
+})
+
+test('PUT => BASE_URL/:id should return statusCode 200 and res.body.title === productUpdate.title', async() => {
+   
+    const productUpdate = {
+        title: 'Pants',
+        description: 'Basic pants blue',
+        price: 250
+    }
+
+    const res = await request(app)
+        .put(`${BASE_URL}/${ productId }`)
+        .send(productUpdate)
+        .set('Authorization', `Bearer ${token}`)
+
+    
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toBeDefined()
+    expect(res.body.title).toBe( productUpdate.title )
+})
+
+// setImages
+test('POST => BASE_URL/:id/images should return statusCode 200 and res.body', async() => {
+
+    const res = await request(app)
+        .post(`${BASE_URL}/${ productId }/images`)
+        .send([ image.body.id ])
+        .set('Authorization', `Bearer ${token}`)
+
+    expect(res.statusCode).toBe(200)
     expect(res.body).toBeDefined()
     expect(res.body).toHaveLength(1)
 
-    expect(res.body[0].categoryId).toBeDefined()
-    expect(res.body[0].categoryId).toBe(category.id)
-
-    expect(res.body[0].category).toBeDefined()
-    expect(res.body[0].category.id).toBe(category.id)
+    expect( res.body[0].url ).toBe( image.body.url )
+    expect( res.body[0].filename ).toBe( image.body.filename )
 })
 
-test("Get -> 'URL_BASE/:productId', should return status code 200, res.body to be defined, res.body.title === product.title, res.body.category.id to be defined, and res.body.category.id === category.id", 
-async () => {
+test('DELETE => BASE_URL/:id should return statusCode 204', async() => {
     const res = await request(app)
-    .get(`${URL_BASE}/${productId}`)
+        .delete(`${BASE_URL}/${ productId }`)
+        .set('Authorization', `Bearer ${token}`)
 
-    expect(res.status).toBe(200)
-    expect(res.body).toBeDefined()
-    expect(res.body.title).toBe(product.title)
-
-    expect(res.body.category.id).toBeDefined()
-    expect(res.body.category.id).toBe(category.id)
+    expect(res.statusCode).toBe(204)
     
-})
-
-test("PUT -> 'URL_BASE/productId', should return status code 200, res.body to be defined and res.body.title === 'Ropa'", 
-async() => {
-    const res = await request(app)
-    .put(`${URL_BASE}/${productId}`)
-    .send({ title: "Ropa"})
-    .set('Authorization', `Bearer ${TOKEN}`)
-
-    expect(res.status).toBe(200)
-    expect(res.body).toBeDefined()
-    expect(res.body.title).toBe('Ropa')
-
-    
-})
-
-test("DELETE -> 'URL_BASE/:productId', should return status code 204", 
-async () => {
-    const res = await request(app)
-    .delete(`${URL_BASE}/${productId}`)
-    .set('Authorization', `Bearer ${TOKEN}`)
-
-    expect(res.status).toBe(204)
-    await category.destroy()
 })

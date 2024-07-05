@@ -4,18 +4,26 @@ const sequelize = require('../utils/connection');
 const Product = sequelize.define('product', {
     title: {
         type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
+        allowNull: false
     },
     description: {
-        type: DataTypes.STRING,
-        allowNull: false,
+        type: DataTypes.TEXT,
+        allowNull: false
     },
     price: {
         type: DataTypes.DECIMAL,
-        allowNull: false,
+        allowNull: false
     },
-    //categoryId
+    brand: {
+        type: DataTypes.STRING,
+    }
+    // stock: {
+    //     type: DataTypes.INTEGER,
+    //     allowNull: true,
+    //     defaultValue: 0
+    // }
+    // categoryId
 });
 
-module.exports = Product ;
+
+module.exports = Product;

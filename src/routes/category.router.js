@@ -1,6 +1,6 @@
 const { getAll, create, remove } = require('../controllers/category.controllers');
 const express = require('express');
-const verifyJWT = require('../utils/verifyJWT')
+const verifyJWT = require('../utils/verifyJwt')
 
 
 const routerCategory = express.Router();
